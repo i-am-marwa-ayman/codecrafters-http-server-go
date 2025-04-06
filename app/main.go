@@ -30,6 +30,10 @@ func main() {
 		str := strings.Split(string(reader), " ")[1]
 		str = str[6:]
 		respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+	} else if strings.HasPrefix(string(reader), "GET /user-agent") {
+		str := strings.Split(string(reader), "\r\n")[3]
+		str = str[12:]
+		respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
 	} else if !strings.HasPrefix(string(reader), "GET / ") {
 		respond = "HTTP/1.1 404 Not Found\r\n\r\n"
 	}
