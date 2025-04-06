@@ -24,10 +24,15 @@ func main() {
 	}
 	reader := make([]byte, 1024)
 	conn.Read(reader)
-	if !strings.HasPrefix(string(reader), "GET / HTTP/1.1") {
-		conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
-	} else {
-		conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+
+	respond := "HTTP/1.1 200 OK\r\n\r\n"
+	if strings.HasPrefix(string(reader), "GET /echo/") {
+		str := strings.Split(string(reader), " ")[1]
+		str = str[6:]
+		respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+	} else if !strings.HasPrefix(string(reader), "GET / ") {
+		respond = "HTTP/1.1 404 Not Found\r\n\r\n"
 	}
+	conn.Write([]byte(respond))
 	conn.Close()
 }
