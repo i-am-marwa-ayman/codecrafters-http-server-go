@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -75,12 +76,21 @@ func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
 
+	var dir = flag.String("directory", ".", "")
+	flag.Parse()
+	err := os.Chdir(*dir)
+	if err != nil {
+		fmt.Println("Failed to change the cur directory")
+		os.Exit(1)
+	}
+
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 	if err != nil {
 		fmt.Println("Failed to bind to port 4221")
 		os.Exit(1)
 	}
 	defer l.Close()
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
