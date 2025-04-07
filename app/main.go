@@ -44,6 +44,19 @@ func NewRequest(data []byte) *Request {
 	}
 	return req
 }
+func GetFileContent(fileName string) (string, error) {
+	file, err := os.Open(fileName)
+	defer file.Close()
+	if err != nil {
+		return "", err
+	}
+	buffer := make([]byte, 1024)
+	n, err := file.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+	return string(buffer[:n]), nil
+}
 func GetRespond(req *Request) string {
 	respond := "HTTP/1.1 200 OK\r\n\r\n"
 	if strings.HasPrefix(req.path, "/echo") {
@@ -52,6 +65,14 @@ func GetRespond(req *Request) string {
 	} else if strings.HasPrefix(req.path, "/user-agent") {
 		str := req.header["user-agent"]
 		respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+	} else if strings.HasPrefix(req.path, "/files") {
+		fileName := req.path[7:]
+		str, err := GetFileContent(fileName)
+		if err != nil {
+			respond = "HTTP/1.1 404 Not Found\r\n\r\n"
+		} else {
+			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+		}
 	} else if req.path != "/" {
 		respond = "HTTP/1.1 404 Not Found\r\n\r\n"
 	}
