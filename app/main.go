@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 )
 
 type Request struct {
@@ -47,15 +46,12 @@ func NewRequest(data []byte) *Request {
 func GetRespond(req *Request) string {
 	respond := "HTTP/1.1 200 OK\r\n\r\n"
 	if strings.HasPrefix(req.path, "/echo") {
-		time.Sleep(time.Second * 5)
 		str := req.path[6:]
 		respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
 	} else if strings.HasPrefix(req.path, "/user-agent") {
-		time.Sleep(time.Second * 1)
 		str := req.header["user-agent"]
 		respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
 	} else if req.path != "/" {
-		time.Sleep(time.Second * 10)
 		respond = "HTTP/1.1 404 Not Found\r\n\r\n"
 	}
 	return respond
