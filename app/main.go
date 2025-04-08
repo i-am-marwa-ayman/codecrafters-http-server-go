@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -52,16 +53,12 @@ func NewRequest(data []byte) *Request {
 }
 func GetFileContent(fileName string) (string, error) {
 	file, err := os.Open(fileName)
+	if err != nil {
+		return "", err
+	}
 	defer file.Close()
-	if err != nil {
-		return "", err
-	}
-	buffer := make([]byte, 1024)
-	n, err := file.Read(buffer)
-	if err != nil {
-		return "", err
-	}
-	return string(buffer[:n]), nil
+	content, err := io.ReadAll(file)
+	return string(content), nil
 }
 func GetRespond(req *Request) string {
 	respond := "HTTP/1.1 200 OK\r\n\r\n"
