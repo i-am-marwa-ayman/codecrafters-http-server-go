@@ -31,17 +31,18 @@ func NewRequest(data []byte) *Request {
 		version: requestLine[2],
 		header:  make(map[string]string),
 	}
-	for _, i := range lines {
-		if i == "" {
+	for _, line := range lines {
+		if line == "" {
 			break // empty line end of header
 		}
-		mapEle := strings.Split(i, ": ")
+		mapEle := strings.Split(line, ": ")
 		if len(mapEle) == 2 {
 			key := strings.ToLower(mapEle[0])
 			value := mapEle[1]
 			req.header[key] = value
 		}
 	}
+	req.body = lines[len(lines)-1]
 	return req
 }
 func GetFileContent(fileName string) (string, error) {
