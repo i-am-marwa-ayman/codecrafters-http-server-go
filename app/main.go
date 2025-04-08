@@ -79,6 +79,32 @@ func GetRespond(req *Request) string {
 	}
 	return respond
 }
+func AddFile(fileName string, content string) bool {
+	file, err := os.Create(fileName)
+	defer file.Close()
+
+	if err != nil {
+		return false
+	}
+	_, err = file.WriteString(content)
+	if err != nil {
+		return false
+	}
+	return true
+}
+func PostRespond(req *Request) string {
+	respond := "HTTP/1.1 200 OK\r\n\r\n"
+	if strings.HasPrefix(req.path, "/files") {
+		fileName := req.path[7:]
+		done := AddFile(fileName, req.body)
+		if done {
+			respond = "HTTP/1.1 201 Created\r\n\r\n"
+		} else {
+			respond = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
+		}
+	}
+	return respond
+}
 func HandleConnction(conn net.Conn) {
 	defer conn.Close()
 
@@ -91,7 +117,12 @@ func HandleConnction(conn net.Conn) {
 	if req == nil {
 		return
 	}
-	respond := GetRespond(req)
+	var respond string
+	if req.method == "GET" {
+		respond = GetRespond(req)
+	} else {
+		respond = PostRespond(req)
+	}
 	conn.Write([]byte(respond))
 }
 func main() {
