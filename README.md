@@ -35,12 +35,12 @@ go build main.go
 
 Run the server with default settings:
 ```bash
-./http-server
+./main
 ```
 
 Specify a directory for file operations:
 ```bash
-./http-server -directory=/path/to/files
+./main --directory /path/to/files
 ```
 
 ## API Endpoints
