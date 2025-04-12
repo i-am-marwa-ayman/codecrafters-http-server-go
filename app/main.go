@@ -18,6 +18,13 @@ type Request struct {
 	header  map[string]string
 	body    string
 }
+type Respond struct {
+	version string
+	code    int
+	msg     string
+	header  string
+	body    string
+}
 
 func NewRequest(data []byte) *Request {
 	lines := strings.Split(string(data), "\r\n\r\n")
@@ -82,33 +89,54 @@ func HasValidEncodingScheme(Schemes string) bool {
 	}
 	return false
 }
+func RespondTostring(res *Respond) string {
+	return fmt.Sprintf("%s %d %s\r\n%s\r\n%s", res.version, res.code, res.msg, res.header, res.body)
+}
 func GetRespond(req *Request) string {
-	respond := "HTTP/1.1 404 Not Found\r\n\r\n"
+	res := &Respond{
+		version: "HTTP/1.1",
+		code:    404,
+		msg:     "Not Found",
+		header:  "",
+		body:    "",
+	}
 	if strings.HasPrefix(req.path, "/echo") {
 		str := req.path[6:]
 		if HasValidEncodingScheme(req.header["accept-encoding"]) {
 			data, err := CompressData([]byte(str))
 			if err == nil {
-				respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(data), data)
+				//respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(data), data)
+				res.code = 200
+				res.msg = "OK"
+				res.header = fmt.Sprintf("Content-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n", len(data))
+				res.body = data
 			}
 		} else {
-			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+			res.code = 200
+			res.msg = "OK"
+			res.header = fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(str))
+			res.body = str
 		}
 	} else if strings.HasPrefix(req.path, "/user-agent") {
 		str := req.header["user-agent"]
-		respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+		res.code = 200
+		res.msg = "OK"
+		res.header = fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(str))
+		res.body = str
 	} else if strings.HasPrefix(req.path, "/files") {
 		fileName := req.path[7:]
 		str, err := GetFileContent(fileName)
-		if err != nil {
-			respond = "HTTP/1.1 404 Not Found\r\n\r\n"
-		} else {
-			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+		if err == nil {
+			res.code = 200
+			res.msg = "OK"
+			res.header = fmt.Sprintf("Content-Type: application/octet-stream\r\nContent-Length: %d\r\n", len(str))
+			res.body = str
 		}
 	} else if req.path == "/" {
-		respond = "HTTP/1.1 200 OK\r\n\r\n"
+		res.code = 200
+		res.msg = "OK"
 	}
-	return respond
+	return RespondTostring(res)
 }
 func AddFile(fileName string, content string) bool {
 	file, err := os.Create(fileName)
@@ -124,17 +152,25 @@ func AddFile(fileName string, content string) bool {
 	return true
 }
 func PostRespond(req *Request) string {
-	respond := "HTTP/1.1 200 OK\r\n\r\n"
+	res := &Respond{
+		version: "HTTP/1.1",
+		code:    404,
+		msg:     "Not Found",
+		header:  "",
+		body:    "",
+	}
 	if strings.HasPrefix(req.path, "/files") {
 		fileName := req.path[7:]
-		done := AddFile(fileName, req.body)
-		if done {
-			respond = "HTTP/1.1 201 Created\r\n\r\n"
+		ok := AddFile(fileName, req.body)
+		if ok {
+			res.code = 201
+			res.msg = "Created"
 		} else {
-			respond = "HTTP/1.1 500 Internal Server Error\r\n\r\n"
+			res.code = 500
+			res.msg = "Internal Server Error"
 		}
 	}
-	return respond
+	return RespondTostring(res)
 }
 func HandleConnction(conn net.Conn) {
 	defer conn.Close()
