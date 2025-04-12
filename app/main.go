@@ -62,14 +62,16 @@ func GetFileContent(fileName string) (string, error) {
 	content, err := io.ReadAll(file)
 	return string(content), nil
 }
-func CompressData(data []byte) ([]byte, error) {
+func CompressData(data []byte) (string, error) {
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
 	_, err := gz.Write(data)
 	if err != nil {
-		return []byte{}, err
+		return "", err
 	}
-	return b.Bytes(), nil
+	gz.Close()
+
+	return b.String(), nil
 }
 func HasValidEncodingScheme(Schemes string) bool {
 	options := strings.Split(Schemes, ", ")
@@ -85,11 +87,10 @@ func GetRespond(req *Request) string {
 	if strings.HasPrefix(req.path, "/echo") {
 		str := req.path[6:]
 		if HasValidEncodingScheme(req.header["accept-encoding"]) {
-			data, err := CompressData([]byte(req.body))
-			if err != nil {
-				str = string(data)
+			data, err := CompressData([]byte(str))
+			if err == nil {
+				respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(data), data)
 			}
-			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
 		} else {
 			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
 		}
