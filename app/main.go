@@ -60,11 +60,20 @@ func GetFileContent(fileName string) (string, error) {
 	content, err := io.ReadAll(file)
 	return string(content), nil
 }
+func HasValidEncodingScheme(Schemes string) bool {
+	options := strings.Split(Schemes, ", ")
+	for _, op := range options {
+		if op == "gzip" {
+			return true
+		}
+	}
+	return false
+}
 func GetRespond(req *Request) string {
 	respond := "HTTP/1.1 404 Not Found\r\n\r\n"
 	if strings.HasPrefix(req.path, "/echo") {
 		str := req.path[6:]
-		if req.header["accept-encoding"] == "gzip" {
+		if HasValidEncodingScheme(req.header["accept-encoding"]) {
 			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
 		} else {
 			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
