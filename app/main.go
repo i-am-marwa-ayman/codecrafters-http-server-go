@@ -61,10 +61,14 @@ func GetFileContent(fileName string) (string, error) {
 	return string(content), nil
 }
 func GetRespond(req *Request) string {
-	respond := "HTTP/1.1 200 OK\r\n\r\n"
+	respond := "HTTP/1.1 404 Not Found\r\n\r\n"
 	if strings.HasPrefix(req.path, "/echo") {
 		str := req.path[6:]
-		respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+		if req.header["accept-encoding"] == "gzip" {
+			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+		} else {
+			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
+		}
 	} else if strings.HasPrefix(req.path, "/user-agent") {
 		str := req.header["user-agent"]
 		respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
@@ -76,8 +80,8 @@ func GetRespond(req *Request) string {
 		} else {
 			respond = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s", len(str), str)
 		}
-	} else if req.path != "/" {
-		respond = "HTTP/1.1 404 Not Found\r\n\r\n"
+	} else if req.path == "/" {
+		respond = "HTTP/1.1 200 OK\r\n\r\n"
 	}
 	return respond
 }
