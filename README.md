@@ -12,6 +12,7 @@ A lightweight, concurrent HTTP server written in Go. This project was completed 
   - POST `/files/{filename}`: Creates or updates files
 - **Concurrent Connections**: Uses Go routines to handle multiple connections simultaneously
 - **Content Compression**: Supports gzip compression for optimized data transfer
+- **Persistent Connections**: Implements HTTP keep-alive for improved performance
 
 ## Getting Started
 
@@ -54,12 +55,21 @@ Specify a directory for file operations:
 
 The server automatically detects if a client supports gzip compression by checking the Accept-Encoding header. If supported, responses are compressed to reduce bandwidth usage and improve performance.
 
+## Connection Management
+
+The server supports HTTP persistent connections (keep-alive) by default, which allows multiple requests to be sent over a single TCP connection. This reduces latency and improves performance by eliminating the need to establish a new connection for each request.
+
+- Connections remain open for subsequent requests by default
+- Clients can request connection closure by sending the "Connection: close" header
+- The server properly handles connection state for each client
+
 ## How It Works
 
 1. The server listens on port 4221
 2. When a connection is received, it's handled in a separate goroutine
 3. The request is parsed and routed to the appropriate handler
 4. The response is generated and sent back to the client
+5. The connection remains open for additional requests unless explicitly closed
 
 ## Example Usage
 
@@ -129,9 +139,46 @@ Content-Length: 18
 This is a test file
 ```
 
+### Persistent Connection Example
+
+Multiple requests on the same connection:
+```http
+GET /echo/first-request HTTP/1.1
+Host: localhost:4221
+
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Content-Length: 13
+
+first-request
+
+GET /echo/second-request HTTP/1.1
+Host: localhost:4221
+
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Content-Length: 14
+
+second-request
+```
+
+Closing a connection:
+```http
+GET /echo/final-request HTTP/1.1
+Host: localhost:4221
+Connection: close
+
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Content-Length: 13
+Connection: close
+
+final-request
+```
+
 ## Performance
 
-The server is designed to handle multiple concurrent connections efficiently using Go's goroutines. Each connection is processed independently, allowing the server to scale with available system resources.
+The server is designed to handle multiple concurrent connections efficiently using Go's goroutines. Each connection is processed independently, allowing the server to scale with available system resources. The implementation of persistent connections further improves performance by reducing the overhead of establishing new TCP connections for each request.
 
 ## Extending the Server
 
