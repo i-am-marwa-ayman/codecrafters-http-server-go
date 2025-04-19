@@ -31,8 +31,9 @@ func HasValidEncodingScheme(Schemes string) bool {
 	return false
 }
 
-func HandleGetRequest(req *Request) string {
+func HandleRequest(req *Request) (string, bool) {
 	res := NewRespond()
+	cancel := false
 	if strings.HasPrefix(req.path, "/echo") {
 		str := req.path[6:]
 		if HasValidEncodingScheme(req.header["accept-encoding"]) {
@@ -51,35 +52,35 @@ func HandleGetRequest(req *Request) string {
 		res.OkRespond(header, str)
 	} else if strings.HasPrefix(req.path, "/files") {
 		fileName := req.path[7:]
-		str, err := GetFileContent(fileName)
-		if err == nil {
-			header := fmt.Sprintf("Content-Type: application/octet-stream\r\nContent-Length: %d\r\n", len(str))
-			res.OkRespond(header, str)
+		if req.method == "GET" {
+			str, err := GetFileContent(fileName)
+			if err == nil {
+				header := fmt.Sprintf("Content-Type: application/octet-stream\r\nContent-Length: %d\r\n", len(str))
+				res.OkRespond(header, str)
+			}
+		} else if req.method == "POST" {
+			ok := AddFile(fileName, req.body)
+			if ok {
+				res.code = 201
+				res.msg = "Created"
+			} else {
+				res.code = 500
+				res.msg = "Internal Server Error"
+			}
 		}
 	} else if req.path == "/" {
 		res.OkRespond("", "")
 	}
-	return res.ToString()
-}
-func HandlePostRequest(req *Request) string {
-	res := NewRespond()
-	if strings.HasPrefix(req.path, "/files") {
-		fileName := req.path[7:]
-		ok := AddFile(fileName, req.body)
-		if ok {
-			res.code = 201
-			res.msg = "Created"
-		} else {
-			res.code = 500
-			res.msg = "Internal Server Error"
-		}
+	if req.header["connection"] == "close" {
+		cancel = true
+		res.header += "Connection: close\r\n"
 	}
-	return res.ToString()
+	return res.ToString(), cancel
 }
 func HandleConnection(conn net.Conn) {
 	defer conn.Close()
-	ok := false
-	for !ok {
+	cancel := false
+	for !cancel {
 		buffer := make([]byte, 1024)
 		n, err := conn.Read(buffer)
 		if err != nil {
@@ -89,13 +90,8 @@ func HandleConnection(conn net.Conn) {
 		if req == nil {
 			return
 		}
-		_, ok = req.header["connection"]
 		var respond string
-		if req.method == "GET" {
-			respond = HandleGetRequest(req)
-		} else if req.method == "POST" {
-			respond = HandlePostRequest(req)
-		}
+		respond, cancel = HandleRequest(req)
 		conn.Write([]byte(respond))
 	}
 	fmt.Println("connection closed")
