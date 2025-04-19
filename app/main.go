@@ -78,23 +78,27 @@ func HandlePostRequest(req *Request) string {
 }
 func HandleConnection(conn net.Conn) {
 	defer conn.Close()
-
-	buffer := make([]byte, 1024)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		return
+	ok := false
+	for !ok {
+		buffer := make([]byte, 1024)
+		n, err := conn.Read(buffer)
+		if err != nil {
+			return
+		}
+		req := NewRequest(buffer[:n])
+		if req == nil {
+			return
+		}
+		_, ok = req.header["connection"]
+		var respond string
+		if req.method == "GET" {
+			respond = HandleGetRequest(req)
+		} else if req.method == "POST" {
+			respond = HandlePostRequest(req)
+		}
+		conn.Write([]byte(respond))
 	}
-	req := NewRequest(buffer[:n])
-	if req == nil {
-		return
-	}
-	var respond string
-	if req.method == "GET" {
-		respond = HandleGetRequest(req)
-	} else if req.method == "POST" {
-		respond = HandlePostRequest(req)
-	}
-	conn.Write([]byte(respond))
+	fmt.Println("connection closed")
 }
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
