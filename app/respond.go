@@ -1,13 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
 type Respond struct {
 	version string
 	code    int
 	msg     string
-	header  string
-	body    string
+	header  map[string]string
+	body    []byte
 }
 
 func NewRespond() *Respond {
@@ -15,16 +18,29 @@ func NewRespond() *Respond {
 		version: "HTTP/1.1",
 		code:    404,
 		msg:     "Not Found",
-		header:  "",
-		body:    "",
+		header:  make(map[string]string),
+		body:    nil,
 	}
 }
-func (res *Respond) ToString() string {
-	return fmt.Sprintf("%s %d %s\r\n%s\r\n%s", res.version, res.code, res.msg, res.header, res.body)
+func (res *Respond) Serialize() []byte {
+	var b bytes.Buffer
+	b.WriteString(fmt.Sprintf("%s %d %s\r\n", res.version, res.code, res.msg))
+	if res.body != nil && res.header["Content-Length"] == "" {
+		res.header["Content-Length"] = fmt.Sprintf("%d", len(res.body))
+	}
+	for k, v := range res.header {
+		b.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
+	}
+	b.WriteString("\r\n")
+	if res.body != nil {
+		b.Write(res.body)
+	}
+	return b.Bytes()
 }
-func (res *Respond) OkRespond(header string, body string) {
-	res.code = 200
-	res.msg = "OK"
-	res.header = header
-	res.body = body
+func (res *Respond) AddHeader(key string, val string) {
+	res.header[key] = val
+}
+func (res *Respond) SetStatusLine(code int, msg string) {
+	res.code = code
+	res.msg = msg
 }
