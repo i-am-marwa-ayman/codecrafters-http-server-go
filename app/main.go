@@ -10,6 +10,16 @@ import (
 	"strings"
 )
 
+var router *Router
+
+func initRouter() {
+	router = NewRouter()
+	router.AddRoute("GET", "/", RootHandler)
+	router.AddRoute("GET", "/echo", EchoHandler)
+	router.AddRoute("GET", "/user-agent", UserAgentHandler)
+	router.AddRoute("GET", "/files", FilesGetHandler)
+	router.AddRoute("POST", "/files", FilesPostHandler)
+}
 func CompressData(data []byte) ([]byte, error) {
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
@@ -32,47 +42,8 @@ func HasValidEncodingScheme(Schemes string) bool {
 }
 
 func HandleRequest(req *Request) ([]byte, bool) {
-	res := NewRespond()
+	res := router.Handle(req)
 	cancel := false
-	if strings.HasPrefix(req.path, "/echo") {
-		str := req.path[6:]
-		if HasValidEncodingScheme(req.header["accept-encoding"]) {
-			data, err := CompressData([]byte(str))
-			if err == nil {
-				res.SetStatusLine(200, "OK")
-				res.AddHeader("Content-Encoding", "gzip")
-				res.AddHeader("Content-Type", "text/plain")
-				res.body = data
-			}
-		} else {
-			res.SetStatusLine(200, "OK")
-			res.AddHeader("Content-Type", "text/plain")
-			res.body = []byte(str)
-		}
-	} else if strings.HasPrefix(req.path, "/user-agent") {
-		res.SetStatusLine(200, "OK")
-		res.AddHeader("Content-Type", "text/plain")
-		res.body = []byte(req.header["user-agent"])
-	} else if strings.HasPrefix(req.path, "/files") {
-		fileName := req.path[7:]
-		if req.method == "GET" {
-			str, err := GetFileContent(fileName)
-			if err == nil {
-				res.SetStatusLine(200, "OK")
-				res.AddHeader("Content-Type", "application/octet-stream")
-				res.body = str
-			}
-		} else if req.method == "POST" {
-			ok := AddFile(fileName, req.body)
-			if ok {
-				res.SetStatusLine(201, "Created")
-			} else {
-				res.SetStatusLine(500, "Internal Server Error")
-			}
-		}
-	} else if req.path == "/" {
-		res.SetStatusLine(200, "OK")
-	}
 	if req.header["connection"] == "close" {
 		cancel = true
 		res.AddHeader("Connection", "close")
@@ -116,7 +87,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer l.Close()
-
+	initRouter()
 	for {
 		conn, err := l.Accept()
 		if err != nil {
