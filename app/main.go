@@ -10,16 +10,16 @@ import (
 	"strings"
 )
 
-func CompressData(data []byte) (string, error) {
+func CompressData(data []byte) ([]byte, error) {
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
 	_, err := gz.Write(data)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	gz.Close()
 
-	return b.String(), nil
+	return b.Bytes(), nil
 }
 func HasValidEncodingScheme(Schemes string) bool {
 	options := strings.Split(Schemes, ", ")
@@ -31,7 +31,7 @@ func HasValidEncodingScheme(Schemes string) bool {
 	return false
 }
 
-func HandleRequest(req *Request) (string, bool) {
+func HandleRequest(req *Request) ([]byte, bool) {
 	res := NewRespond()
 	cancel := false
 	if strings.HasPrefix(req.path, "/echo") {
@@ -39,43 +39,45 @@ func HandleRequest(req *Request) (string, bool) {
 		if HasValidEncodingScheme(req.header["accept-encoding"]) {
 			data, err := CompressData([]byte(str))
 			if err == nil {
-				header := fmt.Sprintf("Content-Encoding: gzip\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n", len(data))
-				res.OkRespond(header, data)
+				res.SetStatusLine(200, "OK")
+				res.AddHeader("Content-Encoding", "gzip")
+				res.AddHeader("Content-Type", "text/plain")
+				res.body = data
 			}
 		} else {
-			header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(str))
-			res.OkRespond(header, str)
+			res.SetStatusLine(200, "OK")
+			res.AddHeader("Content-Type", "text/plain")
+			res.body = []byte(str)
 		}
 	} else if strings.HasPrefix(req.path, "/user-agent") {
-		str := req.header["user-agent"]
-		header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(str))
-		res.OkRespond(header, str)
+		res.SetStatusLine(200, "OK")
+		res.AddHeader("Content-Type", "text/plain")
+		res.body = []byte(req.header["user-agent"])
 	} else if strings.HasPrefix(req.path, "/files") {
 		fileName := req.path[7:]
 		if req.method == "GET" {
 			str, err := GetFileContent(fileName)
 			if err == nil {
-				header := fmt.Sprintf("Content-Type: application/octet-stream\r\nContent-Length: %d\r\n", len(str))
-				res.OkRespond(header, str)
+				res.SetStatusLine(200, "OK")
+				res.AddHeader("Content-Type", "application/octet-stream")
+				res.body = str
 			}
 		} else if req.method == "POST" {
 			ok := AddFile(fileName, req.body)
 			if ok {
-				res.code = 201
-				res.msg = "Created"
+				res.SetStatusLine(201, "Created")
 			} else {
-				res.code = 500
-				res.msg = "Internal Server Error"
+				res.SetStatusLine(500, "Internal Server Error")
 			}
 		}
 	} else if req.path == "/" {
-		res.OkRespond("", "")
+		res.SetStatusLine(200, "OK")
 	}
 	if req.header["connection"] == "close" {
 		cancel = true
-		res.header += "Connection: close\r\n"
+		res.AddHeader("Connection", "close")
 	}
-	return res.ToString(), cancel
+	return res.Serialize(), cancel
 }
 func HandleConnection(conn net.Conn) {
 	defer conn.Close()
@@ -90,7 +92,7 @@ func HandleConnection(conn net.Conn) {
 		if req == nil {
 			return
 		}
-		var respond string
+		var respond []byte
 		respond, cancel = HandleRequest(req)
 		conn.Write([]byte(respond))
 	}
