@@ -5,25 +5,24 @@ import (
 	"os"
 )
 
-func GetFileContent(fileName string) (string, error) {
+func GetFileContent(fileName string) ([]byte, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer file.Close()
 	content, err := io.ReadAll(file)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(content), nil
+	return content, nil
 }
 func AddFile(fileName string, content string) bool {
 	file, err := os.Create(fileName)
-	defer file.Close()
-
 	if err != nil {
 		return false
 	}
+	defer file.Close()
 	_, err = file.WriteString(content)
 	if err != nil {
 		return false
