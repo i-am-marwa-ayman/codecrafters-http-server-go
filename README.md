@@ -26,7 +26,7 @@ cd codecrafters-http-server-go
 
 2. Build the server
 ```bash
-go build
+./your_program.sh
 ```
 
 ### Usage
@@ -184,9 +184,31 @@ The server is designed to handle multiple concurrent connections efficiently usi
 
 The modular design makes it easy to extend the server with additional functionality:
 
-1. Add new request handlers in `main.go`
-2. Implement new response types in `respond.go`
-3. Add additional file operations in `fileHelper.go`
+1. Add new handlerfunc in `router.go`
+2. Add new route in init router function in `main.go`
+3. Implement new response types in `respond.go`
+4. Add additional file operations in `fileHelper.go`
+
+### Adding a New Route
+
+```go
+// In initRouter() function in main.go
+router.AddRoute("GET", "/newpath", NewPathHandler)
+
+// Then define your handler function in router.go
+func NewPathHandler(req *Request) *Respond {
+    res := NewRespond()
+    res.SetStatusLine(200, "OK")
+    res.AddHeader("Content-Type", "text/plain")
+    res.body = []byte("Hello from new path!")
+    return res
+}
+```
+
+## Future Improvements
+
+- Implement better request/respond structure
+- Implement request timeouts and connection limits
 
 ## Feedback
 
